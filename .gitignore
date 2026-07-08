@@ -1,0 +1,11 @@
+node_modules/
+output/
+dist/
+build/
+.env
+.env.*
+*.log
+*.docx
+*.tmp
+docs/*.html
+!docs/index.html

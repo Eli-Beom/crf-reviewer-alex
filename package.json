@@ -1,0 +1,21 @@
+{
+  "name": "crf-reviewer",
+  "version": "0.2.0",
+  "description": "CRF preview HTML / Word review document generator",
+  "private": true,
+  "scripts": {
+    "html": "npx tsx scripts/generate-preview.ts",
+    "client": "npx tsx scripts/generate-client.ts",
+    "internal": "npx tsx scripts/generate-internal.ts",
+    "docx": "npx tsx scripts/generate-docx.ts",
+    "watch": "npx tsx scripts/watch.ts"
+  },
+  "dependencies": {
+    "docx": "^9.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0"
+  }
+}
