@@ -21,7 +21,6 @@ CRF Reviewer was created as a small internal productivity tool to:
 - generate a Word document version for offline or formal review
 - help compare CRF page structure without relying only on screenshots
 
-The local project files indicate the tool work started around early June 2026. The public GitHub repository was created separately on July 8, 2026 as a sanitized portfolio version.
 
 ## Features
 
