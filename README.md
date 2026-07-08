@@ -1,4 +1,4 @@
-# CRF Reviewer
+# eCRF Reviewer
 
 CRF Reviewer is a TypeScript-based review utility that turns CRF study definitions into navigable HTML previews and review documents.
 
