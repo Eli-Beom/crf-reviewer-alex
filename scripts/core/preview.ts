@@ -27,7 +27,7 @@ export function defaultOutputFile(
   study: string,
   mode: PreviewMode
 ): string {
-  const prefix = mode === "client" ? "preview-client" : "preview";
+  const prefix = "preview";
   return path.join(studyPath, `${prefix}-${study}.html`);
 }
 

@@ -180,6 +180,8 @@ function findItem(pageId, sectionId, itemId) {
 function saveOverrides() { localStorage.setItem(LS_OVERRIDE_KEY, JSON.stringify(typeOverrides)); }
 
 let currentPageId = null;
+let currentVisitCode = null;
+let currentVisitType = null;
 let panelOpen = true;
 let pendingKey = null;
 let activeTab = 'comments';
@@ -213,17 +215,20 @@ function buildNav() {
         '<span class="nav-page-id">'+esc(p.pageId)+'</span>' +
         '<span class="nav-domain">'+esc(p.domainLabel)+'</span>' +
         '<span class="nav-comment-dot" style="display:none"></span>';
-      btn.addEventListener('click', () => selectPage(btn, visit.visitLabel, p));
+      btn.addEventListener('click', () => selectPage(btn, visit, p));
       navEl.appendChild(btn);
     });
   });
   refreshNavDots();
 }
 
-function selectPage(btn, visitLabel, pageInfo) {
+function selectPage(btn, visit, pageInfo) {
   document.querySelectorAll('.nav-crf').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   currentPageId = pageInfo.pageId;
+  currentVisitCode = visit.visitCode ?? null;
+  currentVisitType = visit.visitType ?? null;
+  const visitLabel = visit.visitLabel;
 
   document.getElementById('page-breadcrumb').innerHTML =
     esc(visitLabel) +
@@ -249,16 +254,64 @@ function selectSchedule(btn) {
 
 // ── render CRF ─────────────────────────────────────────────────────────────
 function renderPage(page, pageId) {
-  return (page.sections || []).map(sec => renderSection(sec, pageId)).join('');
+  const domainLabel = normalizeDisplayLabel(DOMAINS[pageId]?.label || DOMAINS[page?.domain]?.label || pageId);
+  return (page.sections || []).map(sec => renderSection(sec, pageId, domainLabel)).join('');
 }
 
-function renderSection(sec, pageId) {
-  const labelText = sec.label?.text || sec.id;
+function normalizeDisplayLabel(label) {
+  if (typeof label === 'string' && label.trim()) return label;
+  if (label && typeof label.text === 'string' && label.text.trim()) return label.text;
+  return '';
+}
+
+function renderSection(sec, pageId, domainLabel) {
+  const sectionLabel = normalizeDisplayLabel(sec.label) || sec.id;
+  const labelText = domainLabel && sectionLabel && domainLabel !== sectionLabel
+    ? domainLabel + ' - ' + sectionLabel
+    : (domainLabel || sectionLabel);
+  const headerHtml = domainLabel && sectionLabel && domainLabel !== sectionLabel
+    ? '<div class="section-header"><div class="section-page-label">'+esc(domainLabel)+'</div><div class="section-section-label">'+esc(sectionLabel)+'</div></div>'
+    : '<div class="section-header"><div class="section-page-label">'+esc(domainLabel || sectionLabel)+'</div></div>';
   const labelSize = sec.itemLabelSize || 'NORMAL';
-  const items = (sec.items || []).map((item, idx) => renderItem(item, labelSize, pageId, sec.id, labelText, idx)).join('');
+  const items = (sec.items || [])
+    .filter(item => isVisibleInCurrentVisit(item))
+    .map((item, idx) => renderItem(item, labelSize, pageId, sec.id, labelText, idx))
+    .join('');
   return '<div class="crf-section">' +
-    '<div class="section-header">'+esc(labelText)+'</div>' +
+    headerHtml +
     items + '</div>';
+}
+
+function compareValue(left, condition, right) {
+  switch (condition) {
+    case '=':  return left === right;
+    case '!=': return left !== right;
+    case '>=': return left >= right;
+    case '<=': return left <= right;
+    case '>':  return left > right;
+    case '<':  return left < right;
+    default:   return true;
+  }
+}
+
+function isVisibleInCurrentVisit(item) {
+  const visibility = item?.visibility;
+  if (!visibility) return true;
+  const rules = Array.isArray(visibility) ? visibility : [visibility];
+  return rules.every(rule => {
+    if (!rule || typeof rule !== 'object') return true;
+    if (rule.type === 'NORMAL_VISIT') {
+      if (currentVisitType && currentVisitType !== 'NORMAL_VISIT') return false;
+      if (currentVisitCode == null) return true;
+      return compareValue(currentVisitCode, rule.condition || '=', rule.operand);
+    }
+    if (rule.type === 'UNSCHEDULED_VISIT') {
+      if (currentVisitType && currentVisitType !== 'UNSCHEDULED_VISIT') return false;
+      if (currentVisitCode == null) return true;
+      return compareValue(currentVisitCode, rule.condition || '=', rule.operand);
+    }
+    return true;
+  });
 }
 
 function renderItem(item, labelSize, pageId, sectionId, sectionLabel, itemIndex) {
@@ -312,7 +365,7 @@ function renderFieldRow(item, labelSize, pageId, sectionId, sectionLabel) {
       '<div class="item-label-main">' +
         '<span class="item-label-text">'+esc(item.label || '')+'</span>' +
         (item.required ? '<span class="required-mark">*</span>' : '') +
-        renderLabelDescriptions(item, 'inline') +
+        renderLabelDescriptions(item, item.labelDescriptionDisplay === 'BLOCK' ? 'block' : 'inline') +
       '</div>' +
       renderItemId(item) +
     '</div>' +
@@ -332,7 +385,7 @@ function renderFieldRow(item, labelSize, pageId, sectionId, sectionLabel) {
 function renderControl(item) {
   switch (item.type) {
     case 'TEXT':          return renderText(item);
-    case 'DATE':          return '<div class="mock-input date">YYYY-MM-DD</div>';
+    case 'DATE':          return renderDate(item);
     case 'SINGLE_SELECT': return renderSelect(item);
     case 'CHECK':         return renderCheck(item);
     case 'DICTIONARY':    return '<div class="mock-input dict">사전 검색</div>';
@@ -341,6 +394,16 @@ function renderControl(item) {
     case 'CONSTANT':      return '<span class="constant-val">'+esc(String(item.value??''))+'</span>'+renderLabelDescriptions(item);
     default:              return '<span style="color:#9ca3af;font-size:11px">['+esc(item.type)+']</span>';
   }
+}
+
+function renderDate(item) {
+  const input = '<div class="mock-input date">YYYY-MM-DD</div>';
+  const children = item.children?.items || [];
+  const childHtml = children
+    .filter(child => isVisibleInCurrentVisit(child))
+    .map(child => '<div class="child-control">'+renderControl(child)+'</div>')
+    .join('');
+  return childHtml ? '<div class="mock-input-wrap">'+input+'<div class="child-controls child-controls-h">'+childHtml+'</div></div>' : input;
 }
 
 function renderItemId(item) {
@@ -357,11 +420,24 @@ function labelDescriptionText(item) {
   return String(desc);
 }
 
+function labelDescriptionParts(item) {
+  const desc = item.labelDescriptions;
+  if (!desc) return [];
+  const values = Array.isArray(desc) ? desc : [desc];
+  return values
+    .map(d => (typeof d === 'string' ? d : d?.text))
+    .filter(Boolean)
+    .flatMap(text => String(text).split(/\\r?\\n/).filter(Boolean));
+}
+
 function renderLabelDescriptions(item, mode) {
-  const text = labelDescriptionText(item);
-  if (!text) return '';
-  if (mode === 'inline') return '<span class="label-desc inline">'+esc(text)+'</span>';
-  return '<div class="label-desc">'+esc(text)+'</div>';
+  if (mode === 'inline') {
+    const text = labelDescriptionText(item);
+    return text ? '<span class="label-desc inline">'+esc(text)+'</span>' : '';
+  }
+  const parts = labelDescriptionParts(item);
+  if (!parts.length) return '';
+  return '<div class="label-desc">'+parts.map(text => '<div class="label-desc-line">'+esc(text)+'</div>').join('')+'</div>';
 }
 
 function renderLegacyLabelDescriptions(item) {

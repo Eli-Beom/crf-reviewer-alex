@@ -1,4 +1,4 @@
-﻿/** Shared CSS for both client and internal HTML output */
+﻿/** CSS for internal HTML output */
 
 export const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -179,8 +179,11 @@ body{height:100vh;overflow:hidden;background:var(--g1)}
 }
 .section-header{
   background:#f8fafc;border-bottom:1px solid var(--border);
-  padding:9px 16px;font-size:13px;font-weight:600;color:var(--g5);
+  padding:9px 16px;color:var(--g5);
+  display:flex;flex-direction:column;gap:3px;
 }
+.section-page-label{font-size:13px;font-weight:700;color:var(--g6)}
+.section-section-label{font-size:12px;font-weight:600;color:var(--g4)}
 
 .item-row{
   display:flex;align-items:flex-start;
@@ -286,21 +289,21 @@ body{height:100vh;overflow:hidden;background:var(--g1)}
 .desc-row.has-comment .desc-box{margin-left:13px;background:#fffbeb;border-left-color:var(--comment-dot);color:#92400e}
 
 .schedule-section{
-  background:#fff;border:1px solid var(--border);
-  border-radius:6px;margin-bottom:14px;overflow:hidden;
+  background:#fff;border:1px solid #111827;
+  border-radius:0;margin-bottom:14px;overflow:hidden;
 }
 .schedule-header{
   background:#e5e7eb;border-bottom:1px solid #111827;
-  padding:8px 12px;font-weight:700;color:#111827;
+  padding:10px 12px;font-weight:700;color:#111827;font-size:15px;
 }
 .schedule-wrap{overflow-x:auto}
-.schedule-table{width:100%;border-collapse:collapse;font-size:12px;min-width:760px}
+.schedule-table{width:100%;border-collapse:collapse;font-size:12px;min-width:760px;table-layout:fixed}
 .schedule-table th,.schedule-table td{
-  border:1px solid #111827;padding:6px 7px;text-align:center;vertical-align:middle;
+  border:1px solid #111827;padding:6px 7px;text-align:center;vertical-align:middle;height:28px;
 }
-.schedule-table th{background:#f3f4f6;font-weight:700}
+.schedule-table th{background:#f3f4f6;font-weight:700;font-size:13px}
 .schedule-table th:first-child,.schedule-table td:first-child{
-  text-align:left;min-width:180px;background:#fff;font-weight:500;
+  text-align:left;width:180px;background:#fff;font-weight:500;
 }
 .schedule-check{font-size:15px;color:#374151;line-height:1}
 

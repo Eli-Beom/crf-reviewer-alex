@@ -15,7 +15,7 @@ export interface TypeStatResult {
   labelStats: Record<string, Record<string, number>>;
 }
 
-export type PreviewMode = "client" | "internal";
+export type PreviewMode = "internal";
 
 export interface BuildHtmlOptions {
   study: string;

@@ -1,21 +1,20 @@
-﻿/** HTML scaffold builder - supports "client" and "internal" modes */
+﻿/** HTML scaffold builder for internal review output */
 
 import { buildNav, getPageDisplayLabel } from "./nav.js";
 import { CSS }                from "./css.js";
-import { JS_CLIENT }          from "./js-client.js";
+import { JS_INTERNAL }        from "./js-internal.js";
 import type { BuildHtmlOptions } from "./types.js";
 
 const REVIEWER_VERSION = "v0.16";
 
 export function buildHtml(opts: BuildHtmlOptions): string {
-  const { study, studyInfo, pages, folders, domains, mode } = opts;
+  const { study, studyInfo, pages, folders, domains } = opts;
 
   const navJson        = JSON.stringify(buildNav(folders, pages, domains));
   const scheduleJson   = JSON.stringify(buildSchedule(folders, pages, domains));
   const pagesJson      = JSON.stringify(pages);
   const domainsJson    = JSON.stringify(domains);
-  const isInternal = mode === "internal";
-  const JS = JS_CLIENT;
+  const JS = JS_INTERNAL;
 
   const internalModals = "";
 
@@ -48,7 +47,7 @@ const SCHEDULE = ${scheduleJson};
 const PAGES  = ${pagesJson};
 const DOMAINS = ${domainsJson};`;
 
-  const modeLabel = isInternal ? "internal" : "client";
+  const modeLabel = "internal";
   const versionLabel = REVIEWER_VERSION;
 
   return `<!DOCTYPE html>
@@ -56,7 +55,7 @@ const DOMAINS = ${domainsJson};`;
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>CRF Reviewer ${versionLabel} - ${study}${isInternal ? " [?대???" : ""}</title>
+<title>CRF Reviewer ${versionLabel} - ${study}</title>
 <style>${CSS}</style>
 </head>
 <body>
@@ -191,11 +190,20 @@ function buildSchedule(
   domains: Record<string, any>
 ) {
   const visits: { id: string; label: string }[] = [];
-  const rowMap = new Map<string, { pageId: string; label: string; cells: boolean[] }>();
+  const rowMap = new Map<string, { pageId: string; label: string; order: number; cells: boolean[] }>();
+  let allVisitIndex: number | null = null;
+
+  const ensureVisitColumn = (id: string, label: string) => {
+    const visitIndex = visits.length;
+    visits.push({ id, label });
+    for (const row of rowMap.values()) row.cells.push(false);
+    return visitIndex;
+  };
 
   for (const folder of folders) {
     if (String(folder.type ?? "").startsWith("REPORT_")) continue;
     for (const visit of folder.visits ?? []) {
+      const visitType = String(visit.visit?.type ?? visit.type ?? folder.type ?? "");
       const visitLabel =
         typeof visit.label === "string"
           ? visit.label
@@ -203,17 +211,20 @@ function buildSchedule(
             ? `${visit.label.prefix}1`
             : `${folder.label} ${visit.id}`;
 
-      const visitIndex = visits.length;
-      visits.push({ id: String(visit.id ?? visitIndex), label: visitLabel });
-      for (const row of rowMap.values()) row.cells.push(false);
+      const visitIndex =
+        visitType === "ALL_VISIT"
+          ? allVisitIndex ?? (allVisitIndex = ensureVisitColumn("ALL", "All"))
+          : ensureVisitColumn(String(visit.id ?? visits.length), normalizeScheduleVisitLabel(visitLabel, visitType));
 
       for (const crf of visit.crfs ?? []) {
         const pageId = String(crf.page ?? "");
         if (!pageId || !pages[pageId]) continue;
         if (!rowMap.has(pageId)) {
+          const priority = getScheduleRowOrder(pageId, pages, domains, rowMap.size);
           rowMap.set(pageId, {
             pageId,
             label: getPageDisplayLabel(pageId, pages, domains),
+            order: Number.isFinite(priority) ? priority : rowMap.size,
             cells: Array(visits.length).fill(false),
           });
         }
@@ -222,6 +233,32 @@ function buildSchedule(
     }
   }
 
-  return { visits, rows: Array.from(rowMap.values()) };
+  return { visits, rows: Array.from(rowMap.values()).sort((a, b) => a.order - b.order) };
 }
 
+function normalizeScheduleVisitLabel(label: string, visitType: string): string {
+  if (visitType === "UNSCHEDULED_VISIT") {
+    const match = label.match(/UV\d*/i);
+    return match ? match[0].toUpperCase() : "UV1";
+  }
+  return label;
+}
+
+function getScheduleRowOrder(
+  pageId: string,
+  pages: Record<string, any>,
+  domains: Record<string, any>,
+  fallback: number
+): number {
+  if (pageId === "PROM" && Number.isFinite(Number(domains.CSS?.priority))) {
+    return Number(domains.CSS.priority) + 0.5;
+  }
+  if (Number.isFinite(Number(domains[pageId]?.priority))) {
+    return Number(domains[pageId].priority);
+  }
+  const domainId = String(pages[pageId]?.domain ?? "");
+  if (Number.isFinite(Number(domains[domainId]?.priority))) {
+    return Number(domains[domainId].priority);
+  }
+  return fallback;
+}

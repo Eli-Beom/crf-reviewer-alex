@@ -15,7 +15,7 @@ CRF Reviewer addresses that gap by generating a lightweight review view directly
 CRF Reviewer was created as a small internal productivity tool to:
 
 - render CRF definitions into readable HTML previews
-- provide separate client-facing and internal review modes
+- provide an internal review mode
 - support item-level comments and completion tracking
 - export/import review comments as JSON
 - generate a Word document version for offline or formal review
@@ -25,8 +25,7 @@ CRF Reviewer was created as a small internal productivity tool to:
 ## Features
 
 - HTML preview generation from TypeScript CRF study folders
-- Client mode for lightweight review and comments
-- Internal mode with additional review aids and type inspection
+- Internal mode with review aids and type inspection
 - Comment panel with open/completed status
 - JSON export/import for review state
 - Optional DOCX generation
@@ -58,12 +57,6 @@ Set `CRF_BASE` to the directory that contains CRF study folders.
 export CRF_BASE=/path/to/crf/studies
 ```
 
-Generate a client-facing preview:
-
-```bash
-npm run client -- SAMPLE_STUDY --out ./output/preview-client.html
-```
-
 Generate an internal preview:
 
 ```bash
@@ -86,7 +79,6 @@ npm run watch -- SAMPLE_STUDY --out ./output/preview.html
 
 ```text
 scripts/
-  generate-client.ts      Client-facing HTML generator
   generate-internal.ts    Internal HTML generator
   generate-preview.ts     Shared preview entrypoint
   generate-docx.ts        Word document generator

@@ -5,7 +5,6 @@
   "private": true,
   "scripts": {
     "html": "npx tsx scripts/generate-preview.ts",
-    "client": "npx tsx scripts/generate-client.ts",
     "internal": "npx tsx scripts/generate-internal.ts",
     "docx": "npx tsx scripts/generate-docx.ts",
     "watch": "npx tsx scripts/watch.ts"
